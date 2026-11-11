@@ -1,0 +1,11 @@
+version: rating_itemcf_v1
+# 相似度向量使用 rating - 用户训练均值，DIMSUM 近似计算余弦。
+# 0 表示精确计算，正数控制采样成本；不是最终邻居的相似度过滤阈值。
+sampling_threshold: 1.0
+neighbors: 40
+min_neighbors: 2
+min_item_ratings: 20
+min_similarity: 0.05
+clip_predictions: true
+rating_min: 0.5
+rating_max: 5.0

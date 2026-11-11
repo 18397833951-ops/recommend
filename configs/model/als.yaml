@@ -1,0 +1,12 @@
+version: explicit_als_v1
+# 一次运行只训练下面这一组超参数。
+rank: 16
+reg_param: 0.1
+max_iter: 10
+seed: 20261106
+num_user_blocks: 16
+num_item_blocks: 16
+block_size: 4096
+clip_predictions: true
+rating_min: 0.5
+rating_max: 5.0

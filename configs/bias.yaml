@@ -1,0 +1,13 @@
+defaults:
+  - default
+  - evaluation: ratings
+  - model: bias
+  - _self_
+
+paths:
+  splits_dir: data/splits
+  preparation_reports_dir: artifacts/data_prepare
+  output_dir: artifacts/bias
+
+spark:
+  shuffle_partitions: 128

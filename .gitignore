@@ -1,0 +1,14 @@
+data/raw/
+data/processed/
+data/splits/
+data/candidates/
+.runtime/
+artifacts/
+outputs/
+__pycache__/
+*.py[cod]
+.venv/
+.conda/
+spark-warehouse/
+derby.log
+metastore_db/

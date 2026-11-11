@@ -1,0 +1,5 @@
+master: "local[1]"
+driver_memory: "1g"
+shuffle_partitions: 16
+io_compression_codec: lzf
+parquet_compression_codec: gzip

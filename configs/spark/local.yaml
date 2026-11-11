@@ -1,0 +1,6 @@
+master: "local[2]"
+driver_memory: "1g"
+shuffle_partitions: 64
+# 使用 Java 实现，避免 Windows 上反复解包并残留本地压缩库。
+io_compression_codec: lzf
+parquet_compression_codec: gzip

@@ -1,0 +1,5 @@
+# 请从项目根目录运行；相对路径以启动程序的工作目录为基准。
+raw_dir: data/raw
+# 输出根目录；每次运行会在其中创建日期与时间子目录。
+output_dir: artifacts
+temp_dir: .runtime/tmp

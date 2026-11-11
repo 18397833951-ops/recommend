@@ -1,0 +1,15 @@
+version: joint_biased_mf_v1
+rank: 16
+learning_rate: 0.01
+# 对每批出现的用户/电影向量、偏置的平方和取均值，再乘此系数。
+regularization: 0.01
+max_epochs: 20
+batch_size: 131072
+patience: 3
+init_std: 0.05
+seed: 20261106
+device: cpu #cuda
+num_threads: 4
+clip_predictions: true
+rating_min: 0.5
+rating_max: 5.0

@@ -1,0 +1,15 @@
+defaults:
+  - default
+  - evaluation: ratings
+  - _self_
+
+paths:
+  splits_dir: data/splits
+  preparation_reports_dir: artifacts/data_prepare
+  output_dir: artifacts/baselines
+
+model:
+  version: rating_means_v1
+
+spark:
+  shuffle_partitions: 128

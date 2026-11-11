@@ -1,0 +1,14 @@
+defaults:
+  - default
+  - evaluation: ratings
+  - model: biased_mf
+  - _self_
+
+paths:
+  splits_dir: data/splits
+  preparation_reports_dir: artifacts/data_prepare
+  output_dir: artifacts/biased_mf
+
+data:
+  # 逐分区传到 Python，控制读取 Parquet 时每个分区的大小。
+  read_partitions: 128

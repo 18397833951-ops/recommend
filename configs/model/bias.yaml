@@ -1,0 +1,8 @@
+version: rating_bias_v1
+# 每个正则强度从零偏置重新开始，按验证 RMSE 选择强度和轮次。
+regularizations: [5.0, 10.0, 20.0]
+max_epochs: 10
+# 固定将连续预测限制在评分范围，不四舍五入。
+clip_predictions: true
+rating_min: 0.5
+rating_max: 5.0

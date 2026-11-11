@@ -1,0 +1,14 @@
+# 各模块共用的配置：路径、Spark 参数与运行目录规则。
+defaults:
+  - paths: default
+  - spark: local
+  - _self_
+
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: ${paths.output_dir}/${now:%Y-%m-%d}/${now:%H-%M-%S-%f}
+  sweep:
+    dir: ${paths.output_dir}/multirun/${now:%Y-%m-%d}/${now:%H-%M-%S-%f}
+    subdir: ${hydra.job.num}

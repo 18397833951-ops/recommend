@@ -1,0 +1,18 @@
+defaults:
+  - default
+  - evaluation: ratings
+  - model: itemcf
+  - _self_
+
+paths:
+  splits_dir: data/splits
+  preparation_reports_dir: artifacts/data_prepare
+  output_dir: artifacts/itemcf
+
+data:
+  # 限制评分阶段的 Python 任务数量，减少工作进程启动和广播加载开销。
+  prediction_partitions: 16
+
+spark:
+  driver_memory: 4g
+  shuffle_partitions: 128

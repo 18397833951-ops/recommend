@@ -1,0 +1,13 @@
+defaults:
+  - default
+  - data: prepare
+  - _self_
+
+paths:
+  processed_dir: data/processed
+  splits_dir: data/splits
+  output_dir: artifacts/data_prepare
+  preparation_reports_dir: artifacts/data_prepare
+
+spark:
+  shuffle_partitions: 128

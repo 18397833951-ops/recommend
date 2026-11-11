@@ -1,0 +1,15 @@
+defaults:
+  - default
+  - evaluation: ratings
+  - model: als
+  - _self_
+
+paths:
+  splits_dir: data/splits
+  preparation_reports_dir: artifacts/data_prepare
+  output_dir: artifacts/als
+
+spark:
+  # ALS 同时维护评分块及特征矩阵，单独设置本任务的 Java 堆上限。
+  driver_memory: 4g
+  shuffle_partitions: 128
