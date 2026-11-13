@@ -1,0 +1,4 @@
+version: als_mf_convex_blend_v1
+# 验证集求解单个权重，限制在 [0,1]；另一个权重为 1-alpha。
+rating_min: 0.5
+rating_max: 5.0

@@ -1,0 +1,16 @@
+defaults:
+  - default
+  - evaluation: ratings
+  - model: adaptive_blend
+  - _self_
+
+paths:
+  splits_dir: data/splits
+  preparation_reports_dir: artifacts/data_prepare
+  als_run: artifacts/als/2026-11-09/12-09-14-872852
+  mf_run: artifacts/biased_mf/2026-11-09/15-07-48-034939
+  blend_run: artifacts/blend/2026-11-12/14-46-10-662025
+  output_dir: artifacts/adaptive_blend
+
+data:
+  read_partitions: 128

@@ -1,0 +1,16 @@
+defaults:
+  - default
+  - model: blend
+  - _self_
+
+paths:
+  output_dir: artifacts/blend
+  # 指向已通过检查的模型运行目录；融合复用已有预测，不重新训练。
+  als_run: artifacts/als/2026-11-09/12-09-14-872852
+  mf_run: artifacts/biased_mf/2026-11-09/15-07-48-034939
+
+spark:
+  driver_memory: 4g
+
+data:
+  output_partitions: 16

@@ -2,7 +2,7 @@
 
 使用老师提供的混合数据集训练模型，为 `test_pairs.csv` 中的 100,000 条用户与电影组合预测评分。验收指标为 RMSE，交付内容为预测表格和介绍算法实现思路的 PPT。
 
-教师数据准备、8∶1∶1 划分、三个均值评分基线、正则化偏置、显式 ALS、联合训练的带偏置矩阵分解及评分版 ItemCF 已实现，正式预测导出待实现。实施步骤与验收条件见 [PROJECT_PLAN.md](PROJECT_PLAN.md)。
+教师数据准备、8∶1∶1 划分、三个均值评分基线、正则化偏置、显式 ALS、联合训练的带偏置矩阵分解、评分版 ItemCF、固定与自适应融合已实现，正式预测导出和 HTML 汇报已完成。实施步骤与验收条件见 [PROJECT_PLAN.md](PROJECT_PLAN.md)。
 
 ## 数据
 
@@ -311,8 +311,108 @@ artifacts/itemcf/日期/时间/
 python -m unittest discover -s tests -p test_itemcf.py -v
 ```
 
+## ALS 与矩阵分解加权融合
+
+入口为 `scripts/blend.py`，配置为 `configs/blend.yaml` 和 `configs/model/blend.yaml`。修改 `paths.als_run`、`paths.mf_run` 可以指定已有的模型运行目录。复用保存的最终预测，不重新训练模型，不需要新增依赖。
+
+```powershell
+python scripts/blend.py --cfg job --resolve
+python scripts/blend.py
+```
+
+预测公式为 `alpha × ALS预测 + (1-alpha) × 带偏置矩阵分解预测`。两个输入都是已完成回退及评分截断的分数，非负权重之和为 1，因此融合分数仍在 0.5～5.0 范围内。
+
+权重只通过完整验证集选择。令 `d=ALS预测-MF预测`、`e=MF预测-真实评分`，先计算 `alpha=-sum(e*d)/sum(d*d)`，再将权重限制在 [0,1]；两份预测完全相同时取 0。这个公式直接得到该范围内平方误差最小的权重，不需要重复尝试很多组权重。允许权重取 0 或 1，以保留单模型方案。
+
+脚本核对两个模型报告中的划分指纹、输入预测文件 SHA256，并按用户和电影 ID 对齐，检查时间戳、真实评分、唯一性和全部记录覆盖。读取顺序不需要相同。验证集选出的权重写入 `models/parameters.json` 后才读取本地测试预测，测试误差不参与权重选择。
+
+```text
+artifacts/blend/日期/时间/
+  models/parameters.json        冻结的权重、输入运行目录与评分范围
+  predictions/split=validation/ 验证集的两个模型预测与融合预测
+  predictions/split=test/       固定权重的本地测试预测
+  blend.md                      每个模型一张表的验证和本地测试结果
+  blend.json                    权重、误差统计、输入输出指纹及配置
+  .hydra/                       本次配置快照
+```
+
+融合预测保存后重新读取，核对数量与平方误差。小样本测试覆盖手算权重、端点、相同预测、缺失/重复/错位记录，以及验证集选择与测试集隔离。
+
+已完成的全量实验选出 ALS 权重 0.4152908341、带偏置矩阵分解权重 0.5847091659。验证集 3,187,481 条，融合 RMSE 为 0.83193072；本地测试 3,194,925 条，融合 RMSE 为 0.84191037。相较单独的带偏置矩阵分解，验证与本地测试误差分别降低约 0.93%、0.90%。权重仅由验证集确定，当前将融合方案作为最佳候选。
+
+本次运行耗时 70.19 秒，权重、预测和完整报告位于 `artifacts/blend/2026-11-12/14-46-10-662025/`。使用的是 ALS 单组重跑结果及矩阵分解第 2 轮的已保存预测。
+
+```powershell
+python -m unittest discover -s tests -p test_blend.py -v
+```
+
+## 自适应权重融合网络
+
+入口为 `scripts/adaptive_blend.py`，配置为 `configs/adaptive_blend.yaml`、`configs/model/adaptive_blend.yaml`，无需新增依赖。
+
+```powershell
+python scripts/adaptive_blend.py --cfg job --resolve
+python scripts/adaptive_blend.py
+```
+
+网络输入 4 个数：ALS 预测、带偏置矩阵分解预测、`log1p(用户训练评分数)` 和 `log1p(电影训练评分数)`。评分数量和标准化均值、标准差均仅从原训练集计算。网络为 `Linear(4,16) → ReLU → Linear(16,1) → Sigmoid`，共 97 个可训练参数，输出每条记录的 ALS 权重 alpha，最后计算 `alpha × ALS + (1-alpha) × MF`。
+
+沿用原有 8∶1∶1 数据划分。两个基础模型保持固定，用它们对原训练集的预测训练融合网络，目标为评分 MSE；Adam 学习率 0.001，批大小 131072，最多 20 轮，验证连续 3 轮无改善停止。网络从固定 50/50 权重开始，初始状态作为第 0 轮候选保存。每轮用原验证集选最佳权重，恢复并保存选定方案后才读取本地测试。不额外拆验证集，不重新训练基础模型。
+
+原训练集的基础预测通过保存的 ALS 特征向量和 MF 权重分批计算，仅保留在内存；验证与测试复用已核对的固定融合预测，继续核对文件指纹、记录覆盖和基础模型 RMSE。训练时基础模型已见过这些评分，验证与测试则是未见记录，是否能改进以实际验证结果为准。
+
+```text
+artifacts/adaptive_blend/日期/时间/
+  models/best.pt                 融合网络、训练标准化统计、最佳轮次
+  models/counts.npz              用户和电影的原训练评分数量
+  models/parameters.json         配置、基础模型目录、验证选出的方案
+  predictions/validation.csv.gz 验证逐行评分、预测和自适应权重
+  predictions/test.csv.gz       本地测试的同类字段
+  adaptive_blend.md             每种融合方法各一张结果表
+  adaptive_blend.json           逐轮记录、最终误差及输入输出指纹
+  .hydra/                       本次配置快照
+```
+
+预测 CSV 保留用户、电影、时间戳、真实评分、两个基础预测、ALS 权重、自适应预测和固定融合预测。保存后读回核对完整数量、评分范围及误差。`load_model` 可加载独立网络；部署时还需两个基础模型与 counts.npz 中的训练数量统计。
+
+本次全量实验使用全部 25,517,798 条训练评分，运行 624.70 秒，实际训练 3 轮。训练 MSE 从 0.54312382 降至 0.53586629，验证 RMSE 却依次为 0.83311554、0.83477388、0.83632939，均未超过固定权重融合的 0.83193072。因此在读取本地测试前已选定继续使用固定融合，本次不替换现有方案。
+
+检查点恢复为第 0 轮，即未训练的 50/50 初始参照，其验证、本地测试 RMSE 为 0.83225828、0.84239418；这两个数不是训练后学到自适应权重的成绩。原固定融合在本次读回的本地测试 RMSE 仍为 0.84191037。完整逐轮记录、候选检查点和预测在 `artifacts/adaptive_blend/2026-11-12/15-31-50-871545/`，可读结论见 `adaptive_blend.md`。小样本和全量读回、5 个输出文件指纹检查均通过。
+
+```powershell
+python -m unittest discover -s tests -p test_adaptive_blend.py -v
+```
+
 ## 交付
 
 预测表格需要完整对应原始 `test_pairs.csv` 的 100,000 行，保留用户 ID、电影 ID、时间戳和行顺序，增加连续预测评分。最终表头、文件格式及命名以老师提供的提交模板为准，目前待确认。
 
 同时准备算法 PPT，说明数据来源、验证划分、算法原理、参数、RMSE 对照和最终预测流程。
+
+
+## 正式预测导出
+
+配置为 `configs/predict.yaml`。直接加载选定的 ALS 与矩阵分解模型及固定融合权重，不重新训练。
+
+```powershell
+python scripts/predict.py --cfg job --resolve
+python scripts/predict.py
+```
+
+输出位于 `artifacts/submission/日期/时间/`，`predictions.csv` 包含 userId、movieId、timestamp、prediction。脚本核对原清单、输入文件和模型指纹，保存后逐行读回检查顺序与连续预测精度，完整统计保存在 `submission.json`。
+
+本次结果在 `artifacts/submission/2026-11-13/09-44-46-741346/`：100,000 行，预测范围 0.6503717882547817～5.0，均值 3.5129418065562685。两个模型分别有 730 条记录触发既定回退，全部保留。完整流程耗时 31.30 秒。正式真实评分未提供，因此正式 RMSE 由教师计算。
+
+## HTML 汇报
+
+直接用浏览器打开 [docs/presentation.html](docs/presentation.html)。当前 25 页，包含完整结果表、逐轮训练曲线、参数、回退记录、耗时和正式预测情况。9 份完整 JSON 报告嵌入 HTML，正文展示 8 位小数，原始浮点值可悬停查看或打开完整报告面板。
+
+方向键翻页，G 打开目录，D 打开完整报告，N 查看讲稿，F 全屏。HTML 自带样式和数据，无需联网或下载数据集即可播放。可打印，也可从报告面板复制、下载原始 JSON。
+
+如需从本地实验结果重新生成 HTML：
+
+```powershell
+python scripts/build_presentation.py
+```
+
+重建需要脚本引用的本地报告和正式预测文件。它们未随代码上传；已有 HTML 包含完整报告，可直接打开。数据集、模型、预测 CSV 和运行产物压缩包均留在本地。

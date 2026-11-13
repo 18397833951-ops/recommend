@@ -1,0 +1,11 @@
+version: adaptive_als_mf_blend_v1
+hidden_size: 16
+learning_rate: 0.001
+max_epochs: 20
+patience: 3
+batch_size: 131072
+seed: 20261106
+device: cpu
+num_threads: 4
+rating_min: 0.5
+rating_max: 5.0

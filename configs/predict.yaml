@@ -1,0 +1,11 @@
+defaults:
+  - blend
+  - _self_
+
+paths:
+  processed_dir: data/processed
+  blend_run: artifacts/blend/2026-11-12/14-46-10-662025
+  output_dir: artifacts/submission
+
+model:
+  batch_size: 131072

@@ -12,3 +12,6 @@ __pycache__/
 spark-warehouse/
 derby.log
 metastore_db/
+
+# 本地运行产物的压缩备份
+artifacts.zip
