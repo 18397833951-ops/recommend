@@ -15,3 +15,7 @@ metastore_db/
 
 # 本地运行产物的压缩备份
 artifacts.zip
+
+# 课堂汇报资料仅在本地保留
+/docs/presentation.html
+/scripts/build_presentation.py
