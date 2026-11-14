@@ -2,7 +2,7 @@
 
 使用老师提供的混合数据集训练模型，为 `test_pairs.csv` 中的 100,000 条用户与电影组合预测评分。验收指标为 RMSE，交付内容为预测表格和介绍算法实现思路的 PPT。
 
-教师数据准备、8∶1∶1 划分、三个均值评分基线、正则化偏置、显式 ALS、联合训练的带偏置矩阵分解、评分版 ItemCF、固定与自适应融合已实现，正式预测导出已完成。实施步骤与验收条件见 [PROJECT_PLAN.md](PROJECT_PLAN.md)。
+教师数据准备、8∶1∶1 划分、三个均值评分基线、正则化偏置、显式 ALS、联合训练的带偏置矩阵分解、MMF 掩码矩阵分解、评分版 ItemCF、固定与自适应融合已实现，正式预测导出已完成。实施步骤与验收条件见 [PROJECT_PLAN.md](PROJECT_PLAN.md)。
 
 ## 数据
 
@@ -254,6 +254,33 @@ artifacts/biased_mf/日期/时间/
 ```powershell
 python -m unittest discover -s tests -p test_biased_mf.py -v
 ```
+
+## MMF 掩码矩阵分解
+
+入口为 `scripts/mmf.py`，配置为 `configs/mmf.yaml`、`configs/model/mmf.yaml`，复用现有 PyTorch 依赖。
+
+```powershell
+python scripts/mmf.py --cfg job --resolve
+python scripts/mmf.py
+python -m unittest discover -s tests -p test_mmf.py -v
+```
+
+普通矩阵分解直接计算用户与电影向量的点积。MMF 共享一对基础向量，在点积前给它们乘上不同掩码，再把各成分的点积相加：`训练均值 + 用户偏置 + 电影偏置 + sum_k dot(p * mask_user_k, q * mask_movie_k)`。本实现采用官方高斯掩码，并为每个用户、电影学习各成分的偏移量；向量、偏置、偏移一起更新。
+
+默认维数 16、成分数 4，向量及偏置学习率 0.005，偏移学习率 0.005，Adam、批大小 32768、最多 20 轮、连续 3 轮验证无改善停止。不使用调度器；默认损失为评分 MSE，不额外加正则或 weight decay。以上参数全部在模型 YAML 中配置。训练使用原 25,517,798 条训练评分，原验证集选最佳轮次，恢复后才读取本地测试。未知 ID 的向量和偏置为零，已知侧偏置保留，最终分数截断到 0.5～5.0。
+
+结果保存在 `artifacts/mmf/日期/时间/`：`models/best.pt` 可由 `mmf.load_model` 加载；`models/parameters.json` 记录模型配置；`predictions/validation.csv.gz`、`test.csv.gz` 保存全部逐行预测；`mmf.md`、`mmf.json` 记录逐轮训练、整体 RMSE、回退数量、输入输出指纹和官方源码版本。保存后用 Spark 读回核对数量和误差。
+
+依据为 [MMF 论文](https://doi.org/10.1145/3770855.3817710) 与 [官方实现](https://github.com/snudatalab/MMF/blob/c86307711752dff78fc7f8ade4ed4ffdc38c81c8/main_completion.py)。这是适配教师数据的单组小规模实验：启用可学习偏移，均值使用本项目训练均值；没有采用官方示例的 1200 维、64 成分，也不代表复现论文基准成绩。测试包含三维手算、未知 ID、偏移更新、最佳模型恢复和全流程验收；另在本地下载固定版本官方代码后核对了预测与梯度，其他机器没有该可选参考文件时会跳过此项对照。
+
+全量实验实际训练 7 轮，验证集选中第 4 轮。MMF 的结果如下：
+
+| 划分 | 记录数 | RMSE | 回退记录 |
+| --- | ---: | ---: | ---: |
+| 验证集 | 3,187,481 | 0.83567061 | 12,291 |
+| 本地测试集 | 3,194,925 | 0.84569140 | 19,777 |
+
+全流程耗时 1120.53 秒，可训练参数共 12,117,315 个（含 ID 索引空位）。相较原带偏置矩阵分解的 0.83976814 / 0.84958087，两个划分的误差略有下降；验证仍高于固定融合的 0.83193072，因此依据验证集继续保留固定融合。MMF 完整模型、预测和报告在 `artifacts/mmf/2026-11-14/09-57-08-179493/`。本次仅运行这一组参数，没有据本地测试结果继续调参。
 
 ## 评分版 ItemCF
 

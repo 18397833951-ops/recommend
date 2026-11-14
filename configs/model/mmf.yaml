@@ -1,0 +1,17 @@
+version: gaussian_learned_shift_mmf_v1
+rank: 16
+components: 4
+learning_rate: 0.005
+shift_learning_rate: 0.005
+# 与官方显式评分默认目标一致：MSE；不额外施加参数正则。
+regularization: 0.0
+init_std: 0.02
+max_epochs: 20
+batch_size: 32768
+patience: 3
+seed: 20261106
+device: cpu
+num_threads: 4
+clip_predictions: true
+rating_min: 0.5
+rating_max: 5.0

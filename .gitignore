@@ -19,3 +19,4 @@ artifacts.zip
 # 课堂汇报资料仅在本地保留
 /docs/presentation.html
 /scripts/build_presentation.py
+/docs/methods_learning.html

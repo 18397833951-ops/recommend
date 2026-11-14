@@ -1,0 +1,13 @@
+defaults:
+  - default
+  - evaluation: ratings
+  - model: mmf
+  - _self_
+
+paths:
+  splits_dir: data/splits
+  preparation_reports_dir: artifacts/data_prepare
+  output_dir: artifacts/mmf
+
+data:
+  read_partitions: 128
